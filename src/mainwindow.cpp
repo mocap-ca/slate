@@ -69,7 +69,7 @@ void MainWindow::settings()
         }
         else
         {
-            this->statusBar()->shwMessage( QString("Could not start server") );
+            this->statusBar()->showMessage( QString("Could not start server") );
             QMessageBox::warning(this, "Socket Error", "Could not start server");
         }
     }
