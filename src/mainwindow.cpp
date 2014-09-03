@@ -12,7 +12,8 @@ MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
     socket(NULL),
-    port(-1)
+    port(-1),
+    sendDataFlag(false)
 {
     ui->setupUi(this);
     connect(ui->lineEditShoot, SIGNAL(textChanged(QString)), this, SLOT(sessionChange(QString)));
@@ -32,6 +33,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     if(server)
     {
+        sendDataFlag = false;
         if( socket->bind(QHostAddress::LocalHost, port) )
         {
             connect( socket, SIGNAL(readyRead()), this, SLOT(readData()));
@@ -43,7 +45,7 @@ MainWindow::MainWindow(QWidget *parent) :
     }
     else
     {
-        port = -1;
+        sendDataFlag=true;
     }
 }
 
@@ -61,6 +63,12 @@ void MainWindow::readData()
         data.resize(socket->pendingDatagramSize());
         socket->readDatagram(data.data(), data.size(), &sender, &senderPort);
 
+        QString msg;
+        msg += sender.toString();
+        msg += ":";
+        msg += QString(data);
+        this->statusBar()->showMessage( msg );
+
         if(data.startsWith("SESSION:"))
             ui->lineEditShoot->setText( data.mid( 8 ));
 
@@ -75,31 +83,39 @@ void MainWindow::readData()
 
 void MainWindow::sendData(QString msg)
 {
-    socket->writeDatagram(msg.toUtf8(), QHostAddress(host), port);
+    qint64 sz= socket->writeDatagram(msg.toUtf8(), QHostAddress(host), port);
+    if(sz > 0)
+    {
+        this->statusBar()->showMessage( QString("Wrote: %1").arg(sz));
+    }
+    else
+    {
+        this->statusBar()->showMessage( socket->errorString());
+    }
 }
 
 void MainWindow::sessionChange(QString)
 {
-    if (port <= 0 ) return;
+    if (!sendDataFlag ) return;
     QString data("SESSION:");
     data.append(ui->lineEditShoot->text());
-    socket->write( data.toUtf8());
+    sendData(data);
 }
 
 void MainWindow::shotChange(QString)
 {
-    if (port <= 0 ) return;
+    if (!sendDataFlag ) return;
     QString data("SHOT:");
     data.append(ui->lineEditShot->text());
-    socket->write( data.toUtf8() );
+    sendData(data);
 }
 
 void MainWindow::dateChange(QString)
 {
-    if (port <= 0 ) return;
+    if (!sendDataFlag ) return;
     QString data("DATE:");
     data.append(ui->lineEditDate->text());
-    socket->write( data.toUtf8() );
+    sendData(data);
 }
 
 

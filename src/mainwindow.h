@@ -25,6 +25,7 @@ private:
 
     QString host;
     int     port;
+    bool    sendDataFlag;
 
 
 private slots:

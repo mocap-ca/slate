@@ -31,5 +31,5 @@ void Dialog::setServer()
 
 bool Dialog::isServer() { return ui->radioButtonServer->isChecked(); }
 QString Dialog::getHost() {  return ui->lineEditHost->text(); }
-QString Dialog::getPort() {  return ui->lineEditHost->text(); }
-QString Dialog::getFont() {  return ui->lineEditHost->text(); }
+QString Dialog::getPort() {  return ui->lineEditPort->text(); }
+QString Dialog::getFont() {  return ui->lineEditFont->text(); }
