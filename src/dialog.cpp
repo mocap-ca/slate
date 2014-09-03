@@ -1,7 +1,7 @@
 #include "dialog.h"
 #include "ui_dialog.h"
 
-Dialog::Dialog(QString host, int port, int fontSize, QWidget *parent) :
+Dialog::Dialog(QString host, int port, int fontSize, bool isServer, QWidget *parent) :
     QDialog(parent),
     ui(new Ui::Dialog)
 {
@@ -11,6 +11,16 @@ Dialog::Dialog(QString host, int port, int fontSize, QWidget *parent) :
     ui->lineEditFont->setText(QString("%1").arg(fontSize));
     ui->radioButtonClient->setChecked(true);
     ui->radioButtonServer->setChecked(false);
+    if(isServer)
+    {
+	setServer();
+	ui->radioButtonServer->setChecked(true);
+    }
+    else
+    {
+	setClient();
+        ui->radioButtonClient->setChecked(true);
+    }
     connect(ui->radioButtonClient, SIGNAL(clicked()), this, SLOT(setClient()));
     connect(ui->radioButtonServer, SIGNAL(clicked()), this, SLOT(setServer()));
 }

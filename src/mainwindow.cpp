@@ -30,7 +30,7 @@ MainWindow::MainWindow(QWidget *parent) :
 void MainWindow::settings()
 {
 
-    Dialog d(host, port, fontSize, this);
+    Dialog d(host, port, fontSize, isBound, this);
     d.setModal(true);
     if(d.exec() != QDialog::Accepted) return;
 
