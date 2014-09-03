@@ -62,7 +62,7 @@ void MainWindow::settings()
     {
         sendDataFlag = false;
     this->statusBar()->showMessage( QString("Starting server on port: %1").arg(port) );
-        if( socket->bind(QHostAddress::LocalHost, port) )
+        if( socket->bind(QHostAddress::Any, port) )
         {
             connect( socket, SIGNAL(readyRead()), this, SLOT(readData()));
             isBound=true;
