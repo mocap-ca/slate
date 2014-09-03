@@ -12,7 +12,8 @@ MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
     socket(NULL),
-    port(-1),
+    port(5678),
+    host("127.0.0.1"),
     fontSize(12),
     sendDataFlag(false),
     isBound(false)
