@@ -25,7 +25,9 @@ private:
 
     QString host;
     int     port;
+    int     fontSize;
     bool    sendDataFlag;
+    bool    isBound;
 
 
 private slots:
@@ -33,6 +35,7 @@ private slots:
     void shotChange(QString);
     void dateChange(QString);
     void readData();
+    void settings();
 };
 
 #endif // MAINWINDOW_H

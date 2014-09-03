@@ -1,11 +1,14 @@
 #include "dialog.h"
 #include "ui_dialog.h"
 
-Dialog::Dialog(QWidget *parent) :
+Dialog::Dialog(QString host, int port, int fontSize, QWidget *parent) :
     QDialog(parent),
     ui(new Ui::Dialog)
 {
     ui->setupUi(this);
+    ui->lineEditHost->setText(host);
+    ui->lineEditPort->setText(QString("%1").arg(port));
+    ui->lineEditFont->setText(QString("%1").arg(fontSize));
     ui->radioButtonClient->setChecked(true);
     ui->radioButtonServer->setChecked(false);
     connect(ui->radioButtonClient, SIGNAL(clicked()), this, SLOT(setClient()));
