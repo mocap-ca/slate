@@ -61,7 +61,7 @@ void MainWindow::settings()
     if(server)
     {
         sendDataFlag = false;
-    this->statusBar()->showMessage( QString("Starting server on port: %1").arg(port) );
+        this->statusBar()->showMessage( QString("Starting server on port: %1").arg(port) );
         if( socket->bind(QHostAddress::Any, port) )
         {
             connect( socket, SIGNAL(readyRead()), this, SLOT(readData()));
@@ -69,6 +69,7 @@ void MainWindow::settings()
         }
         else
         {
+            this->statusBar()->shwMessage( QString("Could not start server");
             QMessageBox::warning(this, "Socket Error", "Could not start server");
         }
     }
