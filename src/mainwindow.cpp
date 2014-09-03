@@ -17,7 +17,7 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
     connect(ui->lineEditShoot, SIGNAL(textChanged(QString)), this, SLOT(sessionChange(QString)));
-    connect(ui->lineEditShot,  SIGNAL(textChanged(QString)), this, SLOT(shotChage(QString)));
+    connect(ui->lineEditShot,  SIGNAL(textChanged(QString)), this, SLOT(shotChange(QString)));
     connect(ui->lineEditDate,  SIGNAL(textChanged(QString)), this, SLOT(dateChange(QString)));
 
     Dialog d(this);
@@ -34,6 +34,7 @@ MainWindow::MainWindow(QWidget *parent) :
     if(server)
     {
         sendDataFlag = false;
+	this->statusBar()->showMessage( QString("Starting server on port: %1").arg(port) );
         if( socket->bind(QHostAddress::LocalHost, port) )
         {
             connect( socket, SIGNAL(readyRead()), this, SLOT(readData()));
