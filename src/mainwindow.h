@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QUdpSocket>
+#include <QKeyEvent>
 
 namespace Ui {
 class MainWindow;
@@ -23,12 +24,23 @@ private:
 
     void sendData(QString);
 
-    QString host;
     int     port;
-    int     fontSize;
+    QString host;
+    int     fontSizeSmall;
+    int     fontSizeBig;
     bool    sendDataFlag;
     bool    isBound;
+    bool    isFullscreen;
+    int     saveWidth;
+    int     saveHeight;
 
+
+
+private :
+    void updateFonts();
+
+protected :
+    void keyPressEvent( QKeyEvent *);
 
 private slots:
     void sessionChange(QString);
@@ -36,6 +48,11 @@ private slots:
     void dateChange(QString);
     void readData();
     void settings();
+    void updateScreenSettings();
+
+signals :
+    void screenChange();
+
 };
 
 #endif // MAINWINDOW_H

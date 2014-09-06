@@ -14,23 +14,100 @@ MainWindow::MainWindow(QWidget *parent) :
     socket(NULL),
     port(5678),
     host("127.0.0.1"),
-    fontSize(12),
+    fontSizeSmall(12),
+    fontSizeBig(120),
     sendDataFlag(false),
-    isBound(false)
+    isBound(false),
+    isFullscreen(false),
+    saveWidth(-1),
+    saveHeight(-1)
 {
     ui->setupUi(this);
+
+    saveWidth = this->width();
+    saveHeight = this->height();
+
+
     connect(ui->lineEditShoot, SIGNAL(textChanged(QString)), this, SLOT(sessionChange(QString)));
     connect(ui->lineEditShot,  SIGNAL(textChanged(QString)), this, SLOT(shotChange(QString)));
     connect(ui->lineEditDate,  SIGNAL(textChanged(QString)), this, SLOT(dateChange(QString)));
     connect(ui->actionSet,     SIGNAL(triggered()), this, SLOT(settings()));
+    connect(this, SIGNAL(screenChange()), this, SLOT(updateScreenSettings()));
     settings();
+}
 
+void MainWindow::updateScreenSettings()
+{
+    if(isFullscreen)
+    {
+        // Change to full
+        isFullscreen = true;
+        this->setStyleSheet("QLineEdit { border:none; background: black; color: white; }  QMainWindow { background: black; }");
+        this->showFullScreen();
+        saveWidth = this->width();
+        saveHeight = this->height();
+        updateFonts();
+        ui->lineEditDate->setReadOnly(true);
+        ui->lineEditShot->setReadOnly(true);
+        ui->lineEditShoot->setReadOnly(true);
+        this->setCursor(QCursor(Qt::BlankCursor));
+    }
+    else
+    {
+        // Change to regular
+        isFullscreen = false;
+        updateFonts(); // do this before restoring
+        this->setStyleSheet("");
+        this->showNormal();
+        this->resize( saveWidth, saveHeight );
+        ui->lineEditDate->setReadOnly(false);
+        ui->lineEditShot->setReadOnly(false);
+        ui->lineEditShoot->setReadOnly(false);
+        this->show();
+        this->setCursor(QCursor(Qt::ArrowCursor));
+
+    }
+
+    ui->menuBar->setVisible(!isFullscreen);
+}
+
+void MainWindow::keyPressEvent(QKeyEvent *k)
+{
+    if(k->modifiers() != Qt::ControlModifier) return;
+
+    if( k->key() == Qt::Key_Q )
+        QApplication::quit();
+
+    if( k->key() == Qt::Key_O )
+        settings();
+
+    if( k->key() == Qt::Key_Enter || k->key() == Qt::Key_Space)
+    {
+        isFullscreen = !this->isFullScreen();
+        emit screenChange();
+
+
+    }
+}
+
+void MainWindow::updateFonts()
+{
+    QFont font = ui->lineEditShoot->font();
+    int size = isFullscreen ? fontSizeBig : fontSizeSmall;
+    if( size < 4) size =4;
+    font.setPointSize( size );
+    ui->lineEditShoot->setFont(font);
+    ui->lineEditShot->setFont(font);
+    ui->lineEditDate->setFont(font);
+    this->show();
+    this->update();
+    ui->verticalLayout->update();
 }
 
 void MainWindow::settings()
 {
 
-    Dialog d(host, port, fontSize, isBound, this);
+    Dialog d(host, port, fontSizeSmall, fontSizeBig, isBound, this);
     d.setModal(true);
     if(d.exec() != QDialog::Accepted) return;
 
@@ -44,17 +121,8 @@ void MainWindow::settings()
     bool server = d.isServer();
     host = d.getHost();
     port = d.getPort().toInt();
-    fontSize = d.getFont().toInt();
-
-    QFont font = ui->lineEditShoot->font();
-
-    if(fontSize> 2)
-    {
-    font.setPointSize( fontSize );
-    ui->lineEditShoot->setFont(font);
-    ui->lineEditShot->setFont(font);
-    ui->lineEditDate->setFont(font);
-    }
+    fontSizeSmall = d.getFontSmall();
+    fontSizeBig   = d.getFontBig();
 
     socket = new QUdpSocket(this);
 
@@ -77,6 +145,7 @@ void MainWindow::settings()
     {
         sendDataFlag=true;
     }
+
 
 
 

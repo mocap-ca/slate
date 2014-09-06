@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>982</width>
-    <height>676</height>
+    <width>200</width>
+    <height>161</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -444,7 +444,7 @@
       <property name="font">
        <font>
         <family>Lucida Grande</family>
-        <pointsize>100</pointsize>
+        <pointsize>12</pointsize>
        </font>
       </property>
       <property name="text">
@@ -457,7 +457,7 @@
       <property name="font">
        <font>
         <family>Lucida Grande</family>
-        <pointsize>100</pointsize>
+        <pointsize>12</pointsize>
        </font>
       </property>
      </widget>
@@ -467,7 +467,7 @@
       <property name="font">
        <font>
         <family>Lucida Grande</family>
-        <pointsize>100</pointsize>
+        <pointsize>12</pointsize>
        </font>
       </property>
      </widget>
@@ -479,7 +479,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>982</width>
+     <width>200</width>
      <height>22</height>
     </rect>
    </property>

@@ -1,14 +1,15 @@
 #include "dialog.h"
 #include "ui_dialog.h"
 
-Dialog::Dialog(QString host, int port, int fontSize, bool isServer, QWidget *parent) :
+Dialog::Dialog(QString host, int port, int fontSizeSmall, int fontSizeBig, bool isServer, QWidget *parent) :
     QDialog(parent),
     ui(new Ui::Dialog)
 {
     ui->setupUi(this);
     ui->lineEditHost->setText(host);
     ui->lineEditPort->setText(QString("%1").arg(port));
-    ui->lineEditFont->setText(QString("%1").arg(fontSize));
+    ui->lineEditFontSmall->setText(QString("%1").arg(fontSizeSmall));
+    ui->lineEditFontBig->setText(QString("%1").arg(fontSizeBig));
     ui->radioButtonClient->setChecked(true);
     ui->radioButtonServer->setChecked(false);
     if(isServer)
@@ -45,4 +46,5 @@ void Dialog::setServer()
 bool Dialog::isServer() { return ui->radioButtonServer->isChecked(); }
 QString Dialog::getHost() {  return ui->lineEditHost->text(); }
 QString Dialog::getPort() {  return ui->lineEditPort->text(); }
-QString Dialog::getFont() {  return ui->lineEditFont->text(); }
+int     Dialog::getFontSmall() {  return ui->lineEditFontSmall->text().toInt(); }
+int     Dialog::getFontBig()   {  return ui->lineEditFontBig->text().toInt(); }

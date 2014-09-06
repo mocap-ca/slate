@@ -44,12 +44,12 @@
       </widget>
      </item>
      <item row="5" column="1">
-      <widget class="QLineEdit" name="lineEditFont"/>
+      <widget class="QLineEdit" name="lineEditFontSmall"/>
      </item>
      <item row="5" column="0">
       <widget class="QLabel" name="label_3">
        <property name="text">
-        <string>Font Size</string>
+        <string>Small Font Size:</string>
        </property>
       </widget>
      </item>
@@ -57,6 +57,16 @@
       <widget class="QRadioButton" name="radioButtonServer">
        <property name="text">
         <string>Server</string>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="1">
+      <widget class="QLineEdit" name="lineEditFontBig"/>
+     </item>
+     <item row="6" column="0">
+      <widget class="QLabel" name="label_4">
+       <property name="text">
+        <string>Big Font Size:</string>
        </property>
       </widget>
      </item>
