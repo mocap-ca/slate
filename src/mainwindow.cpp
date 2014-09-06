@@ -27,6 +27,8 @@ MainWindow::MainWindow(QWidget *parent) :
     saveWidth = this->width();
     saveHeight = this->height();
 
+    this->setWindowTitle("PeelSlate 0.1");
+
 
     connect(ui->lineEditShoot, SIGNAL(textChanged(QString)), this, SLOT(sessionChange(QString)));
     connect(ui->lineEditShot,  SIGNAL(textChanged(QString)), this, SLOT(shotChange(QString)));
@@ -50,6 +52,7 @@ void MainWindow::updateScreenSettings()
         ui->lineEditDate->setReadOnly(true);
         ui->lineEditShot->setReadOnly(true);
         ui->lineEditShoot->setReadOnly(true);
+        this->statusBar()->setVisible(false);
         this->setCursor(QCursor(Qt::BlankCursor));
     }
     else
@@ -65,7 +68,7 @@ void MainWindow::updateScreenSettings()
         ui->lineEditShoot->setReadOnly(false);
         this->show();
         this->setCursor(QCursor(Qt::ArrowCursor));
-
+        this->statusBar()->setVisible(true);
     }
 
     ui->menuBar->setVisible(!isFullscreen);
@@ -73,7 +76,12 @@ void MainWindow::updateScreenSettings()
 
 void MainWindow::keyPressEvent(QKeyEvent *k)
 {
-    if(k->modifiers() != Qt::ControlModifier) return;
+    if(k->key() == Qt::Key_Escape && isFullscreen)
+    {
+        isFullscreen = false;
+        emit screenChange();
+    }
+    if(k->modifiers() & Qt::ControlModifier && k->modifiers() & Qt::AltModifier) return;
 
     if( k->key() == Qt::Key_Q )
         QApplication::quit();
@@ -147,8 +155,7 @@ void MainWindow::settings()
     }
 
 
-
-
+    updateFonts();
 }
 
 
