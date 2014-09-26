@@ -1,7 +1,12 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "dialog.h"
+
 #include <QMessageBox>
+#include <QXmlStreamReader>
+#include <QNetworkInterface>
+#include <QNetworkAddressEntry>
+#include <QList>
+#include <QCoreApplication>
 
 MainWindow::~MainWindow()
 {
@@ -15,12 +20,14 @@ MainWindow::MainWindow(QWidget *parent) :
     port(5678),
     host("127.0.0.1"),
     fontSizeSmall(12),
-    fontSizeBig(120),
+    fontSizeBig(90),
+    fontSizeTimecode(120),
     sendDataFlag(false),
     isBound(false),
     isFullscreen(false),
-    saveWidth(-1),
-    saveHeight(-1)
+    saveWidth(400),
+    saveHeight(300),
+    mode(Dialog::NP_SERVER)
 {
     ui->setupUi(this);
 
@@ -29,13 +36,27 @@ MainWindow::MainWindow(QWidget *parent) :
 
     this->setWindowTitle("PeelSlate 0.1");
 
-
-    connect(ui->lineEditShoot, SIGNAL(textChanged(QString)), this, SLOT(sessionChange(QString)));
-    connect(ui->lineEditShot,  SIGNAL(textChanged(QString)), this, SLOT(shotChange(QString)));
-    connect(ui->lineEditDate,  SIGNAL(textChanged(QString)), this, SLOT(dateChange(QString)));
+    connect(ui->lineEditA, SIGNAL(textChanged(QString)), this, SLOT(AChange(QString)));
+    connect(ui->lineEditB, SIGNAL(textChanged(QString)), this, SLOT(BChange(QString)));
+    connect(ui->lineEditC, SIGNAL(textChanged(QString)), this, SLOT(CChange(QString)));
     connect(ui->actionSet,     SIGNAL(triggered()), this, SLOT(settings()));
     connect(this, SIGNAL(screenChange()), this, SLOT(updateScreenSettings()));
-    settings();
+
+    bool showSettings;
+    QStringList args = QCoreApplication::arguments();
+    for( QStringList::iterator i = args.begin(); i != args.end(); i++)
+    {
+        QString arg = (*i).toLower();
+        if(arg == "-f")
+        {
+            isFullscreen = true;
+            showSettings = false;
+        }
+    }
+    if(showSettings)
+        settings();
+    else
+        emit screenChange();
 }
 
 void MainWindow::updateScreenSettings()
@@ -49,9 +70,9 @@ void MainWindow::updateScreenSettings()
         saveWidth = this->width();
         saveHeight = this->height();
         updateFonts();
-        ui->lineEditDate->setReadOnly(true);
-        ui->lineEditShot->setReadOnly(true);
-        ui->lineEditShoot->setReadOnly(true);
+        ui->lineEditA->setReadOnly(true);
+        ui->lineEditB->setReadOnly(true);
+        ui->lineEditC->setReadOnly(true);
         this->statusBar()->setVisible(false);
         this->setCursor(QCursor(Qt::BlankCursor));
     }
@@ -62,13 +83,13 @@ void MainWindow::updateScreenSettings()
         updateFonts(); // do this before restoring
         this->setStyleSheet("");
         this->showNormal();
-        this->resize( saveWidth, saveHeight );
-        ui->lineEditDate->setReadOnly(false);
-        ui->lineEditShot->setReadOnly(false);
-        ui->lineEditShoot->setReadOnly(false);
-        this->show();
+        //this->resize( saveWidth, saveHeight );
+        ui->lineEditA->setReadOnly(false);
+        ui->lineEditB->setReadOnly(false);
+        ui->lineEditC->setReadOnly(false);
         this->setCursor(QCursor(Qt::ArrowCursor));
         this->statusBar()->setVisible(true);
+        this->resize( saveWidth, saveHeight );
     }
 
     ui->menuBar->setVisible(!isFullscreen);
@@ -76,6 +97,7 @@ void MainWindow::updateScreenSettings()
 
 void MainWindow::keyPressEvent(QKeyEvent *k)
 {
+
     if(k->key() == Qt::Key_Escape && isFullscreen)
     {
         isFullscreen = false;
@@ -93,20 +115,22 @@ void MainWindow::keyPressEvent(QKeyEvent *k)
     {
         isFullscreen = !this->isFullScreen();
         emit screenChange();
-
-
     }
 }
 
 void MainWindow::updateFonts()
 {
-    QFont font = ui->lineEditShoot->font();
-    int size = isFullscreen ? fontSizeBig : fontSizeSmall;
-    if( size < 4) size =4;
-    font.setPointSize( size );
-    ui->lineEditShoot->setFont(font);
-    ui->lineEditShot->setFont(font);
-    ui->lineEditDate->setFont(font);
+    QFont fontA = ui->lineEditA->font();
+    QFont fontB = ui->lineEditC->font();
+    int sizeA = isFullscreen ? fontSizeBig : fontSizeSmall;
+    int sizeB = isFullscreen ? fontSizeTimecode : fontSizeSmall;
+    if( sizeA < 4) sizeA = 4;
+    if( sizeB < 4) sizeB = 4;
+    fontA.setPointSize( sizeA );
+    fontB.setPointSize( sizeB );
+    ui->lineEditA->setFont(fontA);
+    ui->lineEditB->setFont(fontA);
+    ui->lineEditC->setFont(fontB);
     this->show();
     this->update();
     ui->verticalLayout->update();
@@ -115,7 +139,7 @@ void MainWindow::updateFonts()
 void MainWindow::settings()
 {
 
-    Dialog d(host, port, fontSizeSmall, fontSizeBig, isBound, this);
+    Dialog d(host, port, fontSizeSmall, fontSizeBig, fontSizeTimecode, mode, this);
     d.setModal(true);
     if(d.exec() != QDialog::Accepted) return;
 
@@ -126,27 +150,68 @@ void MainWindow::settings()
         isBound = false;
     }
 
-    bool server = d.isServer();
+    mode = d.getMode();
     host = d.getHost();
     port = d.getPort().toInt();
     fontSizeSmall = d.getFontSmall();
     fontSizeBig   = d.getFontBig();
 
     socket = new QUdpSocket(this);
+    NP1socket = new QUdpSocket(this);
+    NP2socket = new QUdpSocket(this);
 
-    if(server)
+    if(mode == Dialog::UDP_SERVER)
     {
         sendDataFlag = false;
         this->statusBar()->showMessage( QString("Starting server on port: %1").arg(port) );
         if( socket->bind(QHostAddress::Any, port) )
         {
             connect( socket, SIGNAL(readyRead()), this, SLOT(readData()));
-            isBound=true;
+            isBound = true;
+            isFullscreen = true;
         }
         else
         {
             this->statusBar()->showMessage( QString("Could not start server") );
             QMessageBox::warning(this, "Socket Error", "Could not start server");
+        }
+
+
+    }
+
+    if(mode == Dialog::NP_SERVER)
+    {
+        if(NP1socket->bind(1512))
+        {
+            connect( NP1socket, SIGNAL(readyRead()), this, SLOT(NP1readData()));
+        }
+
+        if(NP2socket->bind(QHostAddress::Any,1511))
+        {
+            QNetworkInterface mciface;
+            QList<QNetworkInterface> il(QNetworkInterface::allInterfaces());
+            for(QList<QNetworkInterface>::iterator i = il.begin(); i != il.end(); i++)
+            {
+                QList<QNetworkAddressEntry> ade( (*i).addressEntries());
+                for(QList<QNetworkAddressEntry>::iterator j=ade.begin(); j!=ade.end(); j++)
+                {
+                    if( (*j).ip().toString() == "169.254.157.20")
+                    {
+                        mciface = *i;
+                        NP2socket->setMulticastInterface(*i);
+                        break;
+                    }
+                }
+            }
+            if(!NP2socket->joinMulticastGroup( QHostAddress("239.255.42.99"), mciface))
+            {
+                QMessageBox::warning(this, "error", "Could not join multicast");
+            }
+            else
+            {
+                connect( NP2socket, SIGNAL(readyRead()), this, SLOT(treadData()));
+                isFullscreen = true;
+            }
         }
     }
     else
@@ -154,8 +219,86 @@ void MainWindow::settings()
         sendDataFlag=true;
     }
 
-
     updateFonts();
+    updateScreenSettings();
+}
+
+void MainWindow::NP1readData()
+{
+    QByteArray data;
+    QHostAddress sender;
+    quint16 senderPort;
+
+    while(NP1socket->hasPendingDatagrams())
+    {
+        data.resize(NP1socket->pendingDatagramSize());
+        NP1socket->readDatagram(data.data(), data.size(), &sender, &senderPort);
+
+        QXmlStreamReader xml(data);
+
+        if(xml.hasError() || xml.atEnd()) return;
+
+        QXmlStreamReader::TokenType token = xml.readNext();
+
+        if(xml.hasError()) return;
+
+        if(xml.name() == "CaptureStop")
+        {
+            ui->lineEditB->setText("");
+            break;
+        }
+
+        while( !xml.atEnd())
+        {
+
+            if(xml.hasError()) break;
+            token = xml.readNext();
+
+            if(token == QXmlStreamReader::StartElement)
+            {
+                if(xml.name() == "Name")
+                {
+                    ui->lineEditB->setText( xml.attributes().value("VALUE").toString() );
+                }
+            }
+        }
+    }
+}
+
+void MainWindow::NP2readData()
+{
+    QByteArray data;
+    QHostAddress sender;
+    quint16 senderPort;
+
+    while(NP2socket->hasPendingDatagrams())
+    {
+        data.resize(NP2socket->pendingDatagramSize());
+        NP2socket->readDatagram(data.data(), data.size(), &sender, &senderPort);
+        const char *ptr = data.data();
+
+        size_t i = 0;
+
+        int messageId = 0;
+        int nBytes = 0;
+        memcpy(&messageId, ptr, 2);
+        if(messageId != 7) continue;
+        memcpy(&nBytes, ptr+2, 2);
+
+        int tc;
+        memcpy(&tc, ptr + nBytes - 14, 4);
+
+        int h = (tc>>24) & 255;
+        int m = (tc>>16) & 255;
+        int s = (tc>>8)  & 255;
+        int f =  tc & 255;
+
+        QString val;
+        val.sprintf("%02d:%02d:%02d:%02d", h, m, s, f);
+
+        ui->lineEditC->setText( val );
+
+    }
 }
 
 
@@ -179,13 +322,13 @@ void MainWindow::readData()
         this->statusBar()->showMessage( msg );
 
         if(data.startsWith("SESSION:"))
-            ui->lineEditShoot->setText( data.mid( 8 ));
+            ui->lineEditA->setText( data.mid( 8 ));
 
         if(data.startsWith("SHOT:"))
-            ui->lineEditShot->setText( data.mid( 5 ));
+            ui->lineEditB->setText( data.mid( 5 ));
 
         if(data.startsWith("DATE:"))
-            ui->lineEditDate->setText( data.mid( 5 ));
+            ui->lineEditC->setText( data.mid( 5 ));
     }
 
 }
@@ -203,27 +346,27 @@ void MainWindow::sendData(QString msg)
     }
 }
 
-void MainWindow::sessionChange(QString)
+void MainWindow::AChange(QString)
 {
     if (!sendDataFlag ) return;
     QString data("SESSION:");
-    data.append(ui->lineEditShoot->text());
+    data.append(ui->lineEditA->text());
     sendData(data);
 }
 
-void MainWindow::shotChange(QString)
+void MainWindow::BChange(QString)
 {
     if (!sendDataFlag ) return;
     QString data("SHOT:");
-    data.append(ui->lineEditShot->text());
+    data.append(ui->lineEditB->text());
     sendData(data);
 }
 
-void MainWindow::dateChange(QString)
+void MainWindow::CChange(QString)
 {
     if (!sendDataFlag ) return;
     QString data("DATE:");
-    data.append(ui->lineEditDate->text());
+    data.append(ui->lineEditC->text());
     sendData(data);
 }
 

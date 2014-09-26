@@ -440,7 +440,7 @@
      <enum>QLayout::SetDefaultConstraint</enum>
     </property>
     <item>
-     <widget class="QLineEdit" name="lineEditShoot">
+     <widget class="QLineEdit" name="lineEditA">
       <property name="font">
        <font>
         <family>Lucida Grande</family>
@@ -453,7 +453,7 @@
      </widget>
     </item>
     <item>
-     <widget class="QLineEdit" name="lineEditShot">
+     <widget class="QLineEdit" name="lineEditB">
       <property name="font">
        <font>
         <family>Lucida Grande</family>
@@ -463,7 +463,7 @@
      </widget>
     </item>
     <item>
-     <widget class="QLineEdit" name="lineEditDate">
+     <widget class="QLineEdit" name="lineEditC">
       <property name="font">
        <font>
         <family>Lucida Grande</family>

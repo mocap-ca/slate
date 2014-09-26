@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QUdpSocket>
 #include <QKeyEvent>
+#include "dialog.h"
 
 namespace Ui {
 class MainWindow;
@@ -20,7 +21,9 @@ public:
 private:
     Ui::MainWindow *ui;
 
-    QUdpSocket * socket;
+    QUdpSocket* socket;
+    QUdpSocket* NP1socket;
+    QUdpSocket* NP2socket;
 
     void sendData(QString);
 
@@ -28,11 +31,13 @@ private:
     QString host;
     int     fontSizeSmall;
     int     fontSizeBig;
+    int     fontSizeTimecode;
     bool    sendDataFlag;
     bool    isBound;
     bool    isFullscreen;
     int     saveWidth;
     int     saveHeight;
+    Dialog::eMode mode;
 
 
 
@@ -43,10 +48,12 @@ protected :
     void keyPressEvent( QKeyEvent *);
 
 private slots:
-    void sessionChange(QString);
-    void shotChange(QString);
-    void dateChange(QString);
+    void AChange(QString);
+    void BChange(QString);
+    void CChange(QString);
     void readData();
+    void NP1readData();
+    void NP2readData();
     void settings();
     void updateScreenSettings();
 

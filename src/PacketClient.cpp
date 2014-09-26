@@ -30,15 +30,6 @@ Usage [optional]:
 
 #include <stdio.h>
 
-#ifdef _WIN32
-#include <conio.h>
-#include <tchar.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#pragma warning( disable : 4996 )
-#define RETURNTYPE DWORD WINAPI
-#define NAMEFLAG NI_NUMERICSERV
-#else
 #define RETURNTYPE void*
 #define SOCKET int
 #include <sys/socket.h>
@@ -57,7 +48,6 @@ Usage [optional]:
 #define INVALID_SOCKET -1
 #define SOCKADDR const struct sockaddr
 #define NAMEFLAG 0
-#endif
 
 #define MAX_NAMELENGTH              256
 
@@ -120,17 +110,15 @@ int ServerVersion[4] = {0,0,0,0};
 // command response listener thread
 RETURNTYPE CommandListenThread(void* dummy)
 {
-#ifdef _WIN32
-    int addr_len;
-    int nDataBytesReceived;
-#else
     socklen_t addr_len;
     socklen_t nDataBytesReceived;
-#endif
+
     char str[256];
     sockaddr_in TheirAddress;
     sPacket PacketIn;
     addr_len = sizeof(struct sockaddr);
+
+	printf("Command Thread started\n");
 
     while (1)
     {
@@ -141,20 +129,10 @@ RETURNTYPE CommandListenThread(void* dummy)
         if((nDataBytesReceived == 0) || (nDataBytesReceived == SOCKET_ERROR) )
             continue;
 
-
-	struct addr_t { u_char b1, b2, b3, b4; } ;
-	struct addr_t x;
-	memcpy(&x, &TheirAddress.sin_addr, sizeof(TheirAddress.sin_addr));
         // debug - print message
-        sprintf(str, "[Client] Received command from %d.%d.%d.%d: Command=%d, nDataBytes=%d",
-            x.b1, x.b2, x.b3, x.b4,
-            (int)PacketIn.iMessage, (int)PacketIn.nDataBytes);
-	/*
-        sprintf(str, "[Client] Received command from %d.%d.%d.%d: Command=%d, nDataBytes=%d",
-            TheirAddress.sin_addr.S_un.S_un_b.s_b1, TheirAddress.sin_addr.S_un.S_un_b.s_b2,
-            TheirAddress.sin_addr.S_un.S_un_b.s_b3, TheirAddress.sin_addr.S_un.S_un_b.s_b4,
-            (int)PacketIn.iMessage, (int)PacketIn.nDataBytes);
-	*/
+        printf("[Client] Received command from %s: Command=%d, nDataBytes=%d",
+		inet_ntoa( TheirAddress.sin_addr ), (int)PacketIn.iMessage, (int)PacketIn.nDataBytes);
+
 
 
         // handle command
@@ -194,20 +172,17 @@ RETURNTYPE CommandListenThread(void* dummy)
 // Data listener thread
 RETURNTYPE DataListenThread(void* dummy)
 {
+	printf("Data listen thread started\n");
     char  szData[20000];
     sockaddr_in TheirAddress;
-#ifdef _WIN32
-    int addr_len = sizeof(struct sockaddr);
-    int nDataBytesRecieved;
-#else
     socklen_t addr_len = sizeof(struct sockaddr);
-	socklen_t nDataBytesRecieved;
-#endif
+    socklen_t nDataBytesRecieved;
 
     while (1)
     {
         // Block until we receive a datagram from the network (from anyone including ourselves)
         int nDataBytesReceived = recvfrom(DataSocket, szData, sizeof(szData), 0, (sockaddr *)&TheirAddress, &addr_len);
+	printf("x");
         Unpack(szData);
     }
 
@@ -225,6 +200,7 @@ SOCKET CreateCommandSocket(unsigned long IP_Address, unsigned short uPort)
     // Create a blocking, datagram socket
     if ((sockfd=socket(AF_INET, SOCK_DGRAM, 0)) == INVALID_SOCKET)
     {
+	printf("Could not create a datagram socket\n");
         return -1;
     }
 
@@ -232,10 +208,11 @@ SOCKET CreateCommandSocket(unsigned long IP_Address, unsigned short uPort)
     memset(&my_addr, 0, sizeof(my_addr));
     my_addr.sin_family = AF_INET;
     my_addr.sin_port = htons(uPort);
-    //my_addr.sin_addr.S_un.S_addr = IP_Address;
-    my_addr.sin_addr.s_addr = htonl(IP_Address);
+    //my_addr.sin_addr.s_addr = IP_Address;
+    my_addr.sin_addr.s_addr = INADDR_ANY;
     if (bind(sockfd, (struct sockaddr *)&my_addr, sizeof(struct sockaddr)) == SOCKET_ERROR)
     {
+	printf("Unable to bind command socket\n");
         closesocket(sockfd);
         return -1;
     }
@@ -244,6 +221,7 @@ SOCKET CreateCommandSocket(unsigned long IP_Address, unsigned short uPort)
     ivalue = 1;
     if (setsockopt(sockfd, SOL_SOCKET, SO_BROADCAST, (char *)&ivalue, sizeof(ivalue)) == SOCKET_ERROR)
     {
+	printf("Unable to set command socket options\n");
         closesocket(sockfd);
         return -1;
     }
@@ -259,19 +237,8 @@ int main(int argc, char* argv[])
     in_addr MyAddress, MultiCastAddress;
     int optval = 0x100000;
 
-#ifdef _WIN32
-    int optval_size = 4;
-    WSADATA WsaData; 
-    if (WSAStartup(0x202, &WsaData) == SOCKET_ERROR)
-    {
-	printf("[PacketClient] WSAStartup failed (error: %d)\n", WSAGetLastError());
-	WSACleanup();
-	return 0;
-    }
-#else
     socklen_t optval_size = 4;
     pthread_t thread;
-#endif
 
 	// server address
 	if(argc>1)
@@ -282,7 +249,7 @@ int main(int argc, char* argv[])
 	else
 	{
         GetLocalIPAddresses((unsigned long *)&ServerAddress, 1);
-        //sprintf(szServerIPAddress, "%d.%d.%d.%d", ServerAddress.S_un.S_un_b.s_b1, ServerAddress.S_un.S_un_b.s_b2, ServerAddress.S_un.S_un_b.s_b3, ServerAddress.S_un.S_un_b.s_b4);
+        sprintf(szServerIPAddress, "%s", inet_ntoa(ServerAddress));
 	}
 
     // client address
@@ -294,7 +261,7 @@ int main(int argc, char* argv[])
 	else
 	{
         GetLocalIPAddresses((unsigned long *)&MyAddress, 1);
-        //sprintf(szMyIPAddress, "%d.%d.%d.%d", MyAddress.S_un.S_un_b.s_b1, MyAddress.S_un.S_un_b.s_b2, MyAddress.S_un.S_un_b.s_b3, MyAddress.S_un.S_un_b.s_b4);
+	sprintf(szMyIPAddress, "%s", inet_ntoa(MyAddress));
     }
   	//MultiCastAddress.S_un.S_addr = inet_addr(MULTICAST_ADDRESS);   
   	MultiCastAddress.s_addr = inet_addr(MULTICAST_ADDRESS);   
@@ -305,9 +272,11 @@ int main(int argc, char* argv[])
     // create "Command" socket
     int port = 0;
     CommandSocket = CreateCommandSocket(MyAddress.s_addr,port);
+    printf("Command Socket: %x\n", CommandSocket);
     if(CommandSocket == -1)
     {
         // error
+	printf("Error creating command socket\n");
     }
     else
     {
@@ -321,18 +290,8 @@ int main(int argc, char* argv[])
         {
             // err - actual size...
         }
-#ifdef _WIN32
-        // startup our "Command Listener" thread
-        SECURITY_ATTRIBUTES security_attribs;
-        security_attribs.nLength = sizeof(SECURITY_ATTRIBUTES);
-        security_attribs.lpSecurityDescriptor = NULL;
-        security_attribs.bInheritHandle = TRUE;
-        DWORD CommandListenThread_ID;
-        HANDLE CommandListenThread_Handle;
-        CommandListenThread_Handle = CreateThread( &security_attribs, 0, CommandListenThread, NULL, 0, &CommandListenThread_ID);
-#else
-		pthread_create( &thread, 0, &CommandListenThread, 0 );
-#endif
+	printf("Creating command thread...\n");
+	pthread_create( &thread, 0, &CommandListenThread, 0 );
     }
 
     // create a "Data" socket
@@ -354,10 +313,7 @@ int main(int argc, char* argv[])
     MySocketAddr.sin_addr = MyAddress; 
     if (bind(DataSocket, (struct sockaddr *)&MySocketAddr, sizeof(struct sockaddr)) == SOCKET_ERROR)
     {
-#ifdef _WIN32
-		printf("[PacketClient] bind failed (error: %d)\n", WSAGetLastError());
-        WSACleanup();
-#endif
+	printf("[PacketClient] bind failed\n");
         return 0;
     }
     // join multicast group
@@ -367,10 +323,7 @@ int main(int argc, char* argv[])
     retval = setsockopt(DataSocket, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *)&Mreq, sizeof(Mreq));
     if (retval == SOCKET_ERROR)
     {
-#ifdef _WIN32
-        printf("[PacketClient] join failed (error: %d)\n", WSAGetLastError());
-        WSACleanup();
-#endif
+	printf("[PacketClient] join failed\n");
         return -1;
     }
 	// create a 1MB buffer
@@ -378,22 +331,12 @@ int main(int argc, char* argv[])
     getsockopt(DataSocket, SOL_SOCKET, SO_RCVBUF, (char *)&optval, &optval_size);
     if (optval != 0x100000)
     {
-        printf("[PacketClient] ReceiveBuffer size = %d", optval);
+        printf("[PacketClient] ReceiveBuffer size = %d\n", optval);
     }
 
-#ifdef _WIN32
-    // startup our "Data Listener" thread
-    SECURITY_ATTRIBUTES security_attribs;
-    security_attribs.nLength = sizeof(SECURITY_ATTRIBUTES);
-    security_attribs.lpSecurityDescriptor = NULL;
-    security_attribs.bInheritHandle = TRUE;
-    DWORD DataListenThread_ID;
-    HANDLE DataListenThread_Handle;
-    DataListenThread_Handle = CreateThread( &security_attribs, 0, DataListenThread, NULL, 0, &DataListenThread_ID);
-#else
 	pthread_t DataListenThread_Handle;
+	printf("creating data listen thread...\n");
 	pthread_create( &DataListenThread_Handle, NULL, &DataListenThread, NULL );
-#endif
     
     // server address for commands
     memset(&HostAddr, 0, sizeof(HostAddr));
@@ -422,11 +365,7 @@ int main(int argc, char* argv[])
     nTries = 3;
     while (!bExit)
     {
-#ifdef _WIN32
-        c =_getch();
-#else
-	c = getchar();
-#endif
+		c = getchar();
         switch(c)
         {
         case 's':
@@ -511,20 +450,13 @@ bool IPAddress_StringToAddr(char *szNameOrAddress, struct in_addr *Address)
 	// getnameinfo
 	if ((retVal = getnameinfo((SOCKADDR *)&saGNI, sizeof(sockaddr), hostName, 256, servInfo, 256, NAMEFLAG)) != 0)
 	{
-#ifdef _WIN32
-        printf("[PacketClient] GetHostByAddr failed. Error #: %ld\n", WSAGetLastError());
-#else
-        printf("[PacketClient] GetHostByAddr failed. Error #: %d\n", retVal);
-#endif
+        printf("[PacketClient] GetHostByAddr failed.\n");
 		return false;
 
 	}
 
-#ifdef _WIN32
-    Address->S_un.S_addr = saGNI.sin_addr.S_un.S_addr;
-#else
     Address->s_addr = saGNI.sin_addr.s_addr;
-#endif
+
     return true;
 }
 
@@ -536,16 +468,8 @@ int GetLocalIPAddresses(unsigned long Addresses[], int nMax)
 	struct addrinfo *aiList = NULL;
     struct sockaddr_in addr;
     int retVal = 0;
-    char* port = "0";
+    const char* port = "0";
     
-#ifdef _WIN32
-    unsigned long  NameLength = 128;
-    if(GetComputerName(szMyName, &NameLength) != TRUE)
-    {
-        printf("[PacketClient] get computer name  failed. Error #: %ld\n", WSAGetLastError());
-        return 0;       
-    };
-#else 
     size_t  NameLength = 128;
 	retVal = gethostname(szMyName, NameLength);
 	if(retVal == -1)
@@ -553,7 +477,6 @@ int GetLocalIPAddresses(unsigned long Addresses[], int nMax)
 		printf("[PacketClient] get computer name  failed.");
 		return 0;
 	}
-#endif
 
 	memset(&aiHints, 0, sizeof(aiHints));
 	aiHints.ai_family = AF_INET;
@@ -561,21 +484,13 @@ int GetLocalIPAddresses(unsigned long Addresses[], int nMax)
 	aiHints.ai_protocol = IPPROTO_UDP;
 	if ((retVal = getaddrinfo(szMyName, port, &aiHints, &aiList)) != 0) 
 	{
-#ifdef _WIN32
-        printf("[PacketClient] getaddrinfo failed. Error #: %ld\n", WSAGetLastError());
-#else
         printf("[PacketClient] getaddrinfo failed. ");
-#endif
         return 0;
 	}
 
     memcpy(&addr, aiList->ai_addr, aiList->ai_addrlen);
     freeaddrinfo(aiList);
-#ifdef _WIN32
-    Addresses[0] = addr.sin_addr.S_un.S_addr;
-#else
     Addresses[0] = addr.sin_addr.s_addr;
-#endif
     return 1;
 }
 
