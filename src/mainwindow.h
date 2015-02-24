@@ -22,8 +22,8 @@ private:
     Ui::MainWindow *ui;
 
     QUdpSocket* socket;
-    QUdpSocket* NP1socket;
-    QUdpSocket* NP2socket;
+    QUdpSocket* NpTakeSocket;
+    QUdpSocket* NpTcSocket;
 
     void sendData(QString);
 
@@ -52,8 +52,8 @@ private slots:
     void BChange(QString);
     void CChange(QString);
     void readData();
-    void NP1readData();
-    void NP2readData();
+    void NpTakeReadData();
+    void NpTcReadData();
     void settings();
     void updateScreenSettings();
 

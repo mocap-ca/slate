@@ -74,7 +74,8 @@ void MainWindow::updateScreenSettings()
         ui->lineEditB->setReadOnly(true);
         ui->lineEditC->setReadOnly(true);
         this->statusBar()->setVisible(false);
-        this->setCursor(QCursor(Qt::BlankCursor));
+        qApp->setOverrideCursor( QCursor(Qt::BlankCursor) );
+        //this->setCursor(QCursor(Qt::BlankCursor));
     }
     else
     {
@@ -87,7 +88,8 @@ void MainWindow::updateScreenSettings()
         ui->lineEditA->setReadOnly(false);
         ui->lineEditB->setReadOnly(false);
         ui->lineEditC->setReadOnly(false);
-        this->setCursor(QCursor(Qt::ArrowCursor));
+        qApp->restoreOverrideCursor();
+        //this->setCursor(QCursor(Qt::ArrowCursor));
         this->statusBar()->setVisible(true);
         this->resize( saveWidth, saveHeight );
     }
@@ -157,8 +159,8 @@ void MainWindow::settings()
     fontSizeBig   = d.getFontBig();
 
     socket = new QUdpSocket(this);
-    NP1socket = new QUdpSocket(this);
-    NP2socket = new QUdpSocket(this);
+    NpTakeSocket = new QUdpSocket(this);
+    NpTcSocket = new QUdpSocket(this);
 
     if(mode == Dialog::UDP_SERVER)
     {
@@ -181,14 +183,18 @@ void MainWindow::settings()
 
     if(mode == Dialog::NP_SERVER)
     {
-        if(NP1socket->bind(1512))
+        // This socket reads the current take from port 1512 - UDP
+        if(NpTakeSocket->bind(1512))
         {
-            connect( NP1socket, SIGNAL(readyRead()), this, SLOT(NP1readData()));
+            connect( NpTakeSocket, SIGNAL(readyRead()), this, SLOT(NpTakeReadData()));
         }
 
-        if(NP2socket->bind(QHostAddress::Any,1511))
+        // Multiscast socket for NatNet realtime feed (for timecode)
+        if(NpTcSocket->bind(QHostAddress::Any,1511))
         {
+            // We need to find a value for mciface - this is a hack for now...
             QNetworkInterface mciface;
+            bool found = false;
             QList<QNetworkInterface> il(QNetworkInterface::allInterfaces());
             for(QList<QNetworkInterface>::iterator i = il.begin(); i != il.end(); i++)
             {
@@ -198,19 +204,27 @@ void MainWindow::settings()
                     if( (*j).ip().toString() == "169.254.157.20")
                     {
                         mciface = *i;
-                        NP2socket->setMulticastInterface(*i);
+                        NpTcSocket->setMulticastInterface(*i);
+                        found = true;
                         break;
                     }
                 }
             }
-            if(!NP2socket->joinMulticastGroup( QHostAddress("239.255.42.99"), mciface))
+            if(!found)
             {
-                QMessageBox::warning(this, "error", "Could not join multicast");
+                QMessageBox::warning(this, "error", "Could not find multicast interface");
             }
             else
             {
-                connect( NP2socket, SIGNAL(readyRead()), this, SLOT(treadData()));
-                isFullscreen = true;
+                if(!NpTcSocket->joinMulticastGroup( QHostAddress("239.255.42.99"), mciface))
+                {
+                    QMessageBox::warning(this, "error", "Could not join multicast");
+                }
+                else
+                {
+                    connect( NpTcSocket, SIGNAL(readyRead()), this, SLOT(NpTcReadData()));
+                    isFullscreen = true;
+                }
             }
         }
     }
@@ -223,16 +237,16 @@ void MainWindow::settings()
     updateScreenSettings();
 }
 
-void MainWindow::NP1readData()
+void MainWindow::NpTakeReadData()
 {
     QByteArray data;
     QHostAddress sender;
     quint16 senderPort;
 
-    while(NP1socket->hasPendingDatagrams())
+    while(NpTakeSocket->hasPendingDatagrams())
     {
-        data.resize(NP1socket->pendingDatagramSize());
-        NP1socket->readDatagram(data.data(), data.size(), &sender, &senderPort);
+        data.resize(NpTakeSocket->pendingDatagramSize());
+        NpTakeSocket->readDatagram(data.data(), data.size(), &sender, &senderPort);
 
         QXmlStreamReader xml(data);
 
@@ -265,16 +279,16 @@ void MainWindow::NP1readData()
     }
 }
 
-void MainWindow::NP2readData()
+void MainWindow::NpTcReadData()
 {
     QByteArray data;
     QHostAddress sender;
     quint16 senderPort;
 
-    while(NP2socket->hasPendingDatagrams())
+    while(NpTcSocket->hasPendingDatagrams())
     {
-        data.resize(NP2socket->pendingDatagramSize());
-        NP2socket->readDatagram(data.data(), data.size(), &sender, &senderPort);
+        data.resize(NpTcSocket->pendingDatagramSize());
+        NpTcSocket->readDatagram(data.data(), data.size(), &sender, &senderPort);
         const char *ptr = data.data();
 
         size_t i = 0;
